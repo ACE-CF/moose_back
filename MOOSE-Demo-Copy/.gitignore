@@ -1,0 +1,8 @@
+Checkpoints
+StartFiles
+Logs
+__pycache__
+*.pyc
+*.json
+.DS_Store
+try*

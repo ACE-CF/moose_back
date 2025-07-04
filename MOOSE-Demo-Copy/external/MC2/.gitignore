@@ -1,0 +1,15 @@
+Checkpoints/*
+Analysis_Results/*
+Analysis_Results_old/*
+Logs/*
+Logs_old/*
+*try*.py
+*.pyc
+Data/backup/*
+Old_Checkpoints/*
+logs/*
+*nfs*
+*.zip
+*.json
+*.txt
+*.pdf
