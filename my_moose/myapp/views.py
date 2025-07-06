@@ -17,7 +17,8 @@ import sys
 import os
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(os.path.join(BASE_DIR, 'MOOSE-Demo'))
+# sys.path.append(os.path.join(BASE_DIR, 'MOOSE-Demo'))
+sys.path.append(os.path.join(BASE_DIR, 'MOOSE-Demo-Copy'))
 
 from MooseDemo import MooseDemo
 from demo_utils import load_MC_gene_hypothesis, obtain_selected_hyp_and_feedback_text, \
@@ -82,7 +83,7 @@ def analyze(request):
         task_dir = os.path.join(settings.MEDIA_ROOT, 'tasks', task_id)
         os.makedirs(task_dir, exist_ok=True)
 
-        task_id = "test2"
+        # task_id = "test2"
         # job_name选择用随机生成的id来取名了，也可以让用户自己取名
         job_name = task_id
         task_dir = f"./StartFiles/{task_id}"
@@ -107,14 +108,14 @@ def analyze(request):
 
         # 步骤 3~5：依次运行 pipeline
         # moose.run_MC([1, 0, 0])  # Inspiration Retrieval
-        # which_stage = [1, 0, 0]
-        # moose.run_MC(hpy1Id, which_stage)
+        which_stage = [1, 0, 0]
+        moose.run_MC(which_stage,init_id=hpy1Id)
         # moose.run_MC([0, 1, 0])  # Hypothesis Composition
-        # which_stage = [0, 1, 0]
-        # moose.run_MC(hpy1Id, which_stage)
+        which_stage = [0, 1, 0]
+        moose.run_MC(which_stage, init_id=hpy1Id)
         # moose.run_MC([0, 0, 1])  # Hypothesis Ranking
-        # which_stage = [0, 0, 1]
-        # moose.run_MC(hpy1Id, which_stage)
+        which_stage = [0, 0, 1]
+        moose.run_MC(which_stage, init_id=hpy1Id)
 
         # 步骤6：加载假设内容
         # gene_hyp_list = load_MC_gene_hypothesis(job_name, modelName)
@@ -124,25 +125,15 @@ def analyze(request):
         hypothesis_data = generate_hypothesis1(hypothesis_output_path)
         file_name = os.path.basename(hypothesis_output_path)
         # 从这里开始是原项目调用内容
-        # 连接项目1，生成假设cc
-        # task_dir, hypothesis_output_path, inspiration_output_path, display_output_path = run_custom_background_script1(
-        #     question, survey, task_id, api_key)
-        # print(task_dir + "win!")
 
         # 5. 模拟处理进度（实际可以通过 WebSockets 或轮询更新进度）
         for i in range(1, 6):
             time.sleep(1)  # 模拟处理时间
             progress = i * 20
             print(f"Processing... {progress}%")
-        # hypothesis_data = generate_hypothesis1(hypothesis_output_path)
-        # file_name = os.path.basename(hypothesis_output_path)
-        # file_name_without_ext = os.path.splitext(os.path.basename(hypothesis_output_path))[0]
         # ✅ 保存结果到 Session
         request.session['last_hypothesis'] = hypothesis_data
         request.session['task_id'] = task_id
-        print("task_id:", task_id)
-        print(type(hypothesis_data))
-        print("trye",file_name)
         # 6. 返回 JSON 响应
         return JsonResponse({
             'status': 'success',
@@ -213,13 +204,6 @@ def get_hypothesis_details(request):
             display_txt_file_path = run_details_analysis1(question_text, survey, target_text, task_id, api_key,
                                                           hypothesis_id)
             item = parse_hypotheses_file(display_txt_file_path)
-            # print(item)
-            # print(details)
-            # 链接第二个项目代码并获取进一步假设数据
-            # for item in ranking_data:
-            #     if item["Hypothesis A"].strip() == target_text:
-            #         return JsonResponse({"status": "success", "details": item})
-            # item = "Hypothesis details:" + target_text
             return JsonResponse({"status": "success", "details": item})
             # return JsonResponse({"status": "error", "message": "Hypothesis not found"}, status=404)
 
@@ -264,7 +248,7 @@ def get_feedback_moose1(request):
             moose_demo.initialize_custom_MC_inspiration_corpus_with_an_existing_file(
                 another_MC_research_background_path, hpy1Id)
             moose_demo.append_new_content_to_background_survey_in_start_file_MC(feedback_text, 0)
-            # moose_demo.run_MC(hpy1Id, which_stage=[1, 1, 1])
+            moose_demo.run_MC(init_id=hpy1Id, which_stage=[1, 1, 1])
 
             hypothesis_output_path = f"./Checkpoints/{job_name}/hypothesis_generation_{modelName}_0_{hpy1Id}_{job_name}.json"
             hypothesis_data = generate_hypothesis1(hypothesis_output_path)
@@ -331,7 +315,8 @@ def get_feedback_moose2(request):
             moose_demo.write_MC2_start_file(question, survey, selected_gene_hyp,
                                                 init_hyp_id=hpy2Id)
             moose_demo.append_new_content_to_background_survey_in_start_file_MC2(feedback_text, init_hyp_id=hpy2Id)
-            # moose_demo.run_MC2(init_hyp_id=hpy2Id)
+            print("start 2")
+            moose_demo.run_MC2(init_hyp_id=hpy2Id)
             num_hierarchy=5
             bkg_id = 0
             if_hierarchical = 1

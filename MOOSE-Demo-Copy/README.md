@@ -49,8 +49,7 @@ The MC pipeline consists of three stages: **inspiration retrieval**, **hypothesi
 ```python
 research_question = "your research question"
 background_survey = "your literature survey"
-init_id=0
-moose_demo.write_MC_start_file_research_background(research_question, background_survey, init_id=init_id)
+moose_demo.write_MC_start_file_research_background(research_question, background_survey)
 ```
 
 ---
@@ -61,7 +60,7 @@ Prepare a directory of Excel files (your inspiration corpus), then provide its p
 
 ```python
 raw_insp_xlsx_dir = "path/to/your/excel/files"
-moose_demo.write_MC_start_file_inspiration_corpus(raw_insp_xlsx_dir, init_id=init_id)
+moose_demo.write_MC_start_file_inspiration_corpus(raw_insp_xlsx_dir)
 ```
 
 ---
@@ -70,7 +69,7 @@ moose_demo.write_MC_start_file_inspiration_corpus(raw_insp_xlsx_dir, init_id=ini
 
 ```python
 which_stage = [1, 0, 0]  # [inspiration, composition, ranking]
-moose_demo.run_MC(init_id, which_stage)
+moose_demo.run_MC(which_stage)
 ```
 
 ---
@@ -79,7 +78,7 @@ moose_demo.run_MC(init_id, which_stage)
 
 ```python
 which_stage = [0, 1, 0]
-moose_demo.run_MC(init_id, which_stage)
+moose_demo.run_MC(which_stage)
 ```
 
 ---
@@ -88,7 +87,7 @@ moose_demo.run_MC(init_id, which_stage)
 
 ```python
 which_stage = [0, 0, 1]
-moose_demo.run_MC(init_id, which_stage)
+moose_demo.run_MC(which_stage)
 ```
 
 ---
@@ -131,14 +130,14 @@ selected_gene_hyp = "previously generated hypothesis"
 feedback = "expert feedback on the hypothesis"
 
 feedback_text_to_append = utils.obtain_selected_hyp_and_feedback_text(selected_gene_hyp, feedback)
-moose_demo.append_new_content_to_background_survey_in_start_file_MC(feedback_text_to_append, init_id)
+moose_demo.append_new_content_to_background_survey_in_start_file_MC(feedback_text_to_append)
 ```
 
 Then rerun all stages with the updated context:
 
 ```python
 which_stage = [1, 1, 1]
-moose_demo.run_MC(init_id, which_stage)
+moose_demo.run_MC(which_stage)
 ```
 
 ---
@@ -167,7 +166,7 @@ moose_demo.run_MC2(init_hyp_id=init_hyp_id)
 
 ```python
 # Returns: [[hypothesis, score, scores_list, num_rounds], ...]
-gene_hyp_list = utils.load_MC_gene_hypothesis(job_name, model_name=model_name, init_id=init_id) 
+gene_hyp_list = utils.load_MC_gene_hypothesis(job_name, model_name=model_name) 
 ```
 
 ---

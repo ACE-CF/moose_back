@@ -24,6 +24,9 @@ def run(command_list):
     )
 
     try:
+        print(
+            "---------------------------BBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC---------------------------")
+
         for line in process.stdout:
             print(line, end='')
     except KeyboardInterrupt:

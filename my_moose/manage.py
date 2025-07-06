@@ -6,6 +6,12 @@ import sys
 
 def main():
     """Run administrative tasks."""
+    # sys.path.append(os.path.join(os.path.dirname(__file__), '../MOOSE-Demo-Copy/external/MC2'))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../MOOSE-Demo-Copy/external/MC2')))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../MOOSE-Demo-Copy/external/MC2/Method')))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../MOOSE-Demo-Copy/external/MC')))
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../MOOSE-Demo-Copy/external/MC/Method')))
+
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "my_moose.settings")
     try:
         from django.core.management import execute_from_command_line

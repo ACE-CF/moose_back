@@ -1,7 +1,6 @@
 import os, re, json, random, time, math, sys
 import pandas as pd
 from google.genai import types
-# from google.generativeai import types
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Method.discipline_specific_prompt_chemistry import hyp_example_hierarchy_1, hyp_example_hierarchy_2, hyp_example_hierarchy_3, hyp_example_hierarchy_4, hyp_example_hierarchy_5, DISCIPLINE, INTRODUCTION_OF_HIERARCHIES, HIERARCHY_LIST, DESCRIPTION_HIERARCHY_LIST, FEEDBACK_HIERARCHY_VALIDITY_CLARITY, FEEDBACK_NON_HIERARCHY_VALIDITY_CLARITY, EXAMPLE_DESCRIPTION_FINAL_HYPOTHESIS, EXAMPLE_UPDATE_NEW_HIERARCHY
 # from Method.discipline_specific_prompt_geophysics import hyp_example_hierarchy_1, hyp_example_hierarchy_2, hyp_example_hierarchy_3, hyp_example_hierarchy_4, hyp_example_hierarchy_5, DISCIPLINE, INTRODUCTION_OF_HIERARCHIES, HIERARCHY_LIST, DESCRIPTION_HIERARCHY_LIST, FEEDBACK_HIERARCHY_VALIDITY_CLARITY, FEEDBACK_NON_HIERARCHY_VALIDITY_CLARITY, EXAMPLE_DESCRIPTION_FINAL_HYPOTHESIS, EXAMPLE_UPDATE_NEW_HIERARCHY

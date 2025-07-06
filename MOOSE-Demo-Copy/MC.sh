@@ -36,6 +36,11 @@ output_dir_postfix=${13}
 if_with_gdth_hyp_annotation=${14}
 init_id=${15}
 
+if_mutate_inside_same_bkg_insp=1
+if_mutate_between_diff_insp=1
+baseline_type=0
+
+
 # ## Custom Research Background Dumping 
 # #   if use custom research background, please modify the 'research_question' and 'background_survey' in research_background_to_json() function in custom_research_background_dumping_and_output_displaying.py
 # python -u ./external/MC/Preprocessing/custom_research_background_dumping_and_output_displaying.py --io_type 0 \
@@ -83,11 +88,12 @@ if [[ ${if_generation} -eq 1 ]]; then
                 --if_save 1 --if_load_from_saved 0 \
                 --if_use_gdth_insp 0 --idx_round_of_first_step_insp_screening 1 \
                 --num_mutations 2 --num_itr_self_refine 2  --num_self_explore_steps_each_line 3 --num_screening_window_size 12 --num_screening_keep_size 2 \
-                --if_mutate_inside_same_bkg_insp 1 --if_mutate_between_diff_insp 1 --if_self_explore 0 --if_consider_external_knowledge_feedback_during_second_refinement 0 \
+                --if_mutate_inside_same_bkg_insp ${if_mutate_inside_same_bkg_insp} --if_mutate_between_diff_insp ${if_mutate_between_diff_insp} --if_self_explore 0 --if_consider_external_knowledge_feedback_during_second_refinement 0 \
                 --inspiration_ids -1  --recom_inspiration_ids  --recom_num_beam_size 5  --self_explore_inspiration_ids   --self_explore_num_beam_size 5 \
                 --max_inspiration_search_steps 3 --background_question_id 0  \
                 --custom_research_background_path "${custom_research_background_path}" \
-                --custom_inspiration_corpus_path ${custom_inspiration_corpus_path}
+                --custom_inspiration_corpus_path ${custom_inspiration_corpus_path} \
+                --baseline_type ${baseline_type}
 fi
 
 if [[ ${if_evaluation} -eq 1 ]]; then

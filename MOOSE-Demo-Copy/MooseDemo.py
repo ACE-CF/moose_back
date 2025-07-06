@@ -38,7 +38,7 @@ class MooseDemo:
 
     # ==================== Write Start File from Scratch (Start File used to Run MC/MC2) ==================== #
 
-    def write_MC_start_file_research_background(self, research_question, background_survey, init_id):
+    def write_MC_start_file_research_background(self, research_question, background_survey, init_id=0):
         custom_MC_research_background_path = utils.full_custom_MC_start_file_research_background_path(self.job_name, self.bkg_id, init_id)
         if custom_MC_research_background_path not in self.list_custom_MC_research_background_path:
             self.list_custom_MC_research_background_path.append(custom_MC_research_background_path)
@@ -46,7 +46,7 @@ class MooseDemo:
         utils.write_MC_start_file_research_background(research_question, background_survey, custom_MC_research_background_path)
 
     
-    def write_MC_start_file_inspiration_corpus(self, raw_insp_xlsx_dir, init_id):
+    def write_MC_start_file_inspiration_corpus(self, raw_insp_xlsx_dir, init_id=0):
         custom_MC_inspiration_corpus_path = utils.full_custom_MC_start_file_inspiration_corpus_path(self.job_name, self.bkg_id, init_id)
         if custom_MC_inspiration_corpus_path not in self.list_custom_MC_inspiration_corpus_path:
             self.list_custom_MC_inspiration_corpus_path.append(custom_MC_inspiration_corpus_path)
@@ -57,7 +57,6 @@ class MooseDemo:
     # will write a start file no matter whether it already exists
     def write_MC2_start_file(self, research_question, background_survey, coarse_grained_hypothesis, init_hyp_id):
         cur_custom_MC2_start_file_path = utils.full_custom_MC2_start_file_path(self.job_name, self.bkg_id, init_hyp_id)
-        print("cur_custom_MC2_start_file_path", cur_custom_MC2_start_file_path)
         if cur_custom_MC2_start_file_path not in self.list_custom_MC2_research_background_and_coarse_hyp_path:
             self.list_custom_MC2_research_background_and_coarse_hyp_path.append(cur_custom_MC2_start_file_path)
         # assert not os.path.exists(cur_custom_MC2_start_file_path), "Custom MC2 research background and coarse hypothesis file already exists."
@@ -66,7 +65,7 @@ class MooseDemo:
 
     # ==================== Initialize Start File with Existing Ones (Start File used to Run MC/MC2) (might not be needed for the website demo) ==================== #
 
-    def initialize_custom_MC_research_background_with_an_existing_file(self, another_MC_research_background_path, init_id):
+    def initialize_custom_MC_research_background_with_an_existing_file(self, another_MC_research_background_path, init_id=0):
         # this file does not exist, and another file exists
         assert os.path.exists(another_MC_research_background_path), "Another research background file (to initialize this custom background file) does not exist."
         # Copy and rename
@@ -77,7 +76,7 @@ class MooseDemo:
         shutil.copy(another_MC_research_background_path, custom_MC_research_background_path)
 
 
-    def initialize_custom_MC_inspiration_corpus_with_an_existing_file(self, another_MC_inspiration_corpus_path, init_id):
+    def initialize_custom_MC_inspiration_corpus_with_an_existing_file(self, another_MC_inspiration_corpus_path, init_id=0):
         # this file does not exist, and another file exists
         assert os.path.exists(another_MC_inspiration_corpus_path), "Another inspiration corpus file (to initialize this custom corpus file) does not exist."
         # Copy and rename
@@ -105,14 +104,17 @@ class MooseDemo:
     #   (deprecated) bkg_id: background ID in TOMATO-Chem benchmark; if use custom background, set it to 0
     #   which_stage: [0/1, 0/1, 0/1] representing whether perform [inspiration retrieval, hypothesis composition, hypothesis ranking] respectively
     #   if_eval_with_gdth_hyp: 0/1, whether to evaluate the hypotheses with groundtruth hypothesis annotation (by default, only the research question in the TOMATO-Chem benchmark has the groundtruth hypothesis annotation); only used when which_stage[2] is 1
-    def run_MC(self, init_id, which_stage=None, if_eval_with_gdth_hyp=0):
+    def run_MC(self, which_stage=None, init_id=0, if_eval_with_gdth_hyp=0):
         if which_stage is None:
             which_stage = [1, 1, 1]
         custom_MC_research_background_path = utils.full_custom_MC_start_file_research_background_path(self.job_name, self.bkg_id, init_id)
         custom_MC_inspiration_corpus_path = utils.full_custom_MC_start_file_inspiration_corpus_path(self.job_name, self.bkg_id, init_id)
         assert os.path.exists(custom_MC_research_background_path), "Custom research background file does not exist."
         assert os.path.exists(custom_MC_inspiration_corpus_path), "Custom inspiration corpus file does not exist."
-        utils.run_MC_py(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name, custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage, bkg_id=self.bkg_id,init_id=init_id, output_dir_postfix=self.job_name, if_eval_with_gdth_hyp=if_eval_with_gdth_hyp)
+        utils.run_MC_py(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name,
+                        custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage,
+                        bkg_id=self.bkg_id, init_id=init_id, output_dir_postfix=self.job_name,
+                        if_eval_with_gdth_hyp=if_eval_with_gdth_hyp)
         # utils.run_MC(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name, custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage, bkg_id=self.bkg_id, output_dir_postfix=self.job_name, if_eval_with_gdth_hyp=if_eval_with_gdth_hyp, init_id=init_id)
 
 
@@ -134,7 +136,7 @@ class MooseDemo:
     #   selected_gene_hyp: the selected gene hypothesis to provide feedback
     # Output:
     #   feedback: text
-    def obtain_feedback_simulated(self, selected_gene_hyp):
+    def obtain_feedback_simulated(self, selected_gene_hyp, feedback_strength_level):
         # load research question and groundtruth hypothesis from TOMATO-Chem benchmark data
         bkg_q, dict_bkg2survey, dict_bkg2groundtruthHyp, dict_bkg2fg_hyp, dict_bkg2fg_exp, dict_bkg2note = load_chem_annotation("external/MC2/Data/chem_research_2024_finegrained.xlsx")
         research_question = bkg_q[self.bkg_id]
@@ -142,7 +144,7 @@ class MooseDemo:
         gdth_hyp = dict_bkg2fg_hyp[research_question]
 
         # simulated feedback
-        feedback = utils.provide_feedback(research_question, gdth_hyp, selected_gene_hyp, self.api_type, self.api_key, self.base_url, self.model_name)
+        feedback = utils.provide_feedback(research_question, gdth_hyp, selected_gene_hyp, self.api_type, self.api_key, self.base_url, self.model_name, feedback_strength_level=feedback_strength_level)
         return feedback
 
     
@@ -161,14 +163,14 @@ class MooseDemo:
     # ==================== Use Human Feedback to Update Start Files (for HAII) ==================== #
 
     # new_content: text as the new content to append to the survey in the start file of MC
-    # clean_up_survey_from_first_selected_hyp_and_feedback: 0/1, whether to clean up the first selected hyp and feedback from the survey
-    def append_new_content_to_background_survey_in_start_file_MC(self, new_content, init_id, clean_up_survey_from_first_selected_hyp_and_feedback=0):
+    # if_clean_up_survey_from_first_selected_hyp_and_feedback: 0/1, whether to clean up the first selected hyp and feedback from the survey
+    def append_new_content_to_background_survey_in_start_file_MC(self, new_content, init_id=0, if_clean_up_survey_from_first_selected_hyp_and_feedback=0):
         custom_MC_research_background_path = utils.full_custom_MC_start_file_research_background_path(self.job_name, self.bkg_id, init_id)
         assert os.path.exists(custom_MC_research_background_path), "Custom research background file does not exist."
         # load existing content
         with open(custom_MC_research_background_path, 'r') as f:
             cur_research_question, cur_background_survey = json.load(f)
-        if clean_up_survey_from_first_selected_hyp_and_feedback:
+        if if_clean_up_survey_from_first_selected_hyp_and_feedback:
             prompts = utils.demo_instruction_prompts("obtain_selected_hyp_and_feedback_text")
             assert len(prompts) == 2, "prompts should have 2 elements."
             cur_background_survey_split = cur_background_survey.split(prompts[0].strip().split("\n")[0])
@@ -187,8 +189,9 @@ class MooseDemo:
 
 
     # new_content: text as the new content to append to the survey in the start file of MC2
-    # clean_up_survey_from_first_selected_hyp_and_feedback: 0/1, whether to clean up the first selected hyp and feedback from the survey
-    def append_new_content_to_background_survey_in_start_file_MC2(self, new_content, init_hyp_id, clean_up_survey_from_first_selected_hyp_and_feedback=0):
+    # if_clean_up_survey_from_first_selected_hyp_and_feedback: 0/1, whether to clean up the first selected hyp and feedback from the survey
+    def append_new_content_to_background_survey_in_start_file_MC2(self, new_content, init_hyp_id, if_clean_up_survey_from_first_selected_hyp_and_feedback=0):
+        assert if_clean_up_survey_from_first_selected_hyp_and_feedback in [0, 1], "if_clean_up_survey_from_first_selected_hyp_and_feedback must be 0 or 1."
         cur_custom_MC2_start_file_path = utils.full_custom_MC2_start_file_path(self.job_name, self.bkg_id, init_hyp_id)
         assert os.path.exists(cur_custom_MC2_start_file_path), "Custom MC2 research background and coarse hypothesis file does not exist."
         # load existing content
@@ -196,7 +199,7 @@ class MooseDemo:
             start_data = json.load(f)
         # each custom start file only contains one research question
         cur_research_question, cur_background_survey, cur_coarse_grained_hypothesis = start_data[0]
-        if clean_up_survey_from_first_selected_hyp_and_feedback:
+        if if_clean_up_survey_from_first_selected_hyp_and_feedback:
             prompts = utils.demo_instruction_prompts("obtain_selected_hyp_and_feedback_text")
             assert len(prompts) == 2, "prompts should have 2 elements."
             cur_background_survey_split = cur_background_survey.split(prompts[0].strip().split("\n")[0])
@@ -222,15 +225,15 @@ class MooseDemo:
     #   final_hypothesis_with_ancillary_info: [[hypothesis, score, scores_list, num_rounds], ...]
     #   final_scores: [[precision, recall, f1, weighted_precision, weighted_recall, weighted_f1], ...]
     #       len(final_scores) == num_hyp_for_eval; len(final_hypothesis_with_ancillary_info) normally is larger than num_hyp_for_eval
-    def evaluate_MC_hypothesis_with_groundtruth_hypothesis_annotation(self, init_id, num_hyp_for_eval=10, num_compare_times=3, chem_annotation_path="./external/MC2/Data/chem_research_2024_finegrained.xlsx", preprocess_groundtruth_components_dir="./Checkpoints/groundtruth_hyp_components_collection.json", hyp_type='hyp'):
+    def evaluate_MC_hypothesis_with_groundtruth_hypothesis_annotation(self, init_id=0, num_hyp_for_eval=10, num_compare_times=3, chem_annotation_path="./external/MC2/Data/chem_research_2024_finegrained.xlsx", preprocess_groundtruth_components_dir="./Checkpoints/groundtruth_hyp_components_collection.json", hyp_type='hyp'):
         ## Using MC's evaluation
         # self.run_MC(which_stage=[0, 0, 1], if_eval_with_gdth_hyp=1)
         # # load matched scores file
-        # final_hypothesis, final_scores = utils.load_MC_matched_scores(self.job_name, self.model_name, init_id, self.bkg_id)
+        # final_hypothesis, final_scores = utils.load_MC_matched_scores(self.job_name, self.model_name, self.bkg_id, init_id)
 
         ## Using MC2's evaluation
         # final_hypothesis_with_ancillary_info: [[hypothesis, score, scores_list, num_rounds], ...]
-        final_hypothesis_with_ancillary_info = utils.load_MC_gene_hypothesis(self.job_name, self.model_name, init_id, self.bkg_id)
+        final_hypothesis_with_ancillary_info = utils.load_MC_gene_hypothesis(self.job_name, self.model_name, self.bkg_id, init_id)
         # assert final_hypothesis_with_ancillary_info is sorted based on the score
         final_hypothesis_with_ancillary_info.sort(key=lambda x: x[1], reverse=True)
         final_hypothesis = [hyp[0] for hyp in final_hypothesis_with_ancillary_info[:num_hyp_for_eval]]

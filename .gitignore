@@ -10,6 +10,7 @@ env/
 .venv/
 env310/
 moose_env/
+MOOSE-Demo/
 
 # Environment variables / secrets
 .env
