@@ -99,7 +99,21 @@ class Greedy(object):
         if_better=False
         cnt_search_single_step=0
         if_continue_search=True
+        # past_failed_hyp: [[hypothesis, reason], ...]
+        if self.args.if_generate_with_past_failed_hyp == 1:
+            past_failed_hyp = []
+            # back up the original survey to advoid add the same past failed hypothesis to the survey multiple times
+            cur_survey_ori = cur_survey
         while not if_better:
+            # add past failed hypothesis to the survey to mimic in-context RL
+            if self.args.if_generate_with_past_failed_hyp == 1:
+                if len(past_failed_hyp) > 0:
+                    prompt_past_failed_hyp = ""
+                    for i in range(len(past_failed_hyp)):
+                        prompt_past_failed_hyp += "The {}th previous hypothesis that is not better than the base hypothesis is: ".format(i+1) + past_failed_hyp[i][0] + "\n" + "The reason is: " + past_failed_hyp[i][1] + "\n"
+                    prompt_past_failed_hyp += "\nBelow are some previous updated hypotheses that are not better than the base hypothesis and the corresponding reasons (The reason might mention Research hypothesis candidate 1 and Research hypothesis candidate 2. Out of them, Research hypothesis candidate 1 is the base hypothesis, and Research hypothesis candidate 2 is the not better updated hypothesis), you may be aware of them: " + prompt_past_failed_hyp
+                    cur_survey = cur_survey_ori + prompt_past_failed_hyp
+                    print("Added past failed hypothesis to the survey to mimic in-context RL")
             # structured_gene: [hypothesis, reason]
             if self.args.if_feedback == 1:
                 structured_gene = self.one_step_greedy_search_with_feedback(cur_q, cur_survey, cur_cg_hyp, prev_step_gene_fg_hyp)
@@ -121,6 +135,9 @@ class Greedy(object):
             else:
                 print("\tThe new hypothesis is not better than the previous one, try again... ")
                 # print("\nThe new hypothesis is not better than the previous one, try again... \nReason: {}".format(selection_reason[1]))
+                if self.args.if_generate_with_past_failed_hyp == 1:
+                    past_failed_hyp.append([structured_gene[0], selection_reason[1]])
+                    print("Collected past failed hypothesis to mimic in-context RL")
             cnt_search_single_step+=1
             if cnt_search_single_step >= locam_minimum_threshold:
                 if_continue_search=False
@@ -238,6 +255,7 @@ if __name__ == "__main__":
     parser.add_argument("--if_use_vague_cg_hyp_as_input", type=int, default=0, help="whether to use processed vague coarse-grained hypothesis as input (by Data_Processing/input_hyp_processing.py)")
     parser.add_argument("--vague_cg_hyp_path", type=str, default="./Data/processed_research_direction.json", help="store processed vague coarse-grained hypothesis")
     parser.add_argument("--if_generate_with_example", type=int, default=1, help="during optimization, whether to use hypothesis example in the prompt to generate hypothesis in each step")
+    parser.add_argument("--if_generate_with_past_failed_hyp", type=int, default=0, help="during optimization, whether to use past failed hypothesis in the prompt to generate hypothesis in each step")
     parser.add_argument("--if_use_custom_research_background_and_coarse_hyp", type=int, default=0, help="whether to use custom research question & background survey & coarse-grained hypothesis; 0: use the background research question in the chem_annotation_path; 1: use custom research question in custom_research_background_and_coarse_hyp_path")
     parser.add_argument("--custom_research_background_and_coarse_hyp_path", type=str, default="./custom_research_background_and_coarse_hyp.json", help="if bkg_id == -1, then use this path to load custom research question and background survey and coarse-grained hypothesis; in a format of json file, with keys: 'research_question', 'background_survey', 'coarse_grained_hypothesis'; if bkg_id != -1, then this path will be ignored")
     args = parser.parse_args()
@@ -248,6 +266,7 @@ if __name__ == "__main__":
     assert args.if_use_vague_cg_hyp_as_input in [0, 1]
     # we need if_generate_with_example to be 1
     assert args.if_generate_with_example in [1]
+    assert args.if_generate_with_past_failed_hyp in [0, 1]
     assert args.api_type in [0, 1, 2]
     assert args.if_use_custom_research_background_and_coarse_hyp in [0, 1]
 

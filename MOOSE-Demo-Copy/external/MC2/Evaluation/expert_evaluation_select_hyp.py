@@ -25,9 +25,10 @@ def select_hypothesis_for_expert_evaluation(if_save):
         locam_minimum_threshold = 2
         output_dir_postfix = "updated_prompt_mar_29"
         h5_exp_hierarchy_id = 4
+        if_generate_with_past_failed_hyp = 0
         # get final hypothesis from methods
         final_hypothesis_hierarchy_5, final_hypothesis_hierarchy_1, final_hypothesis_greedy = load_hypothesis_from_methods(cur_bkg_id, which_exp, exp_model_name, exp_eval_model_name, if_multiple_llm, 
-        beam_size_branching, if_use_vague_cg_hyp_as_input, locam_minimum_threshold, output_dir_postfix, h5_exp_hierarchy_id)
+        beam_size_branching, if_use_vague_cg_hyp_as_input, locam_minimum_threshold, output_dir_postfix, if_generate_with_past_failed_hyp, h5_exp_hierarchy_id)
         # selected_hyp_3_to_rank
         cur_selected_hyp_3_to_rank = [final_hypothesis_hierarchy_5[0], final_hypothesis_hierarchy_1[0], final_hypothesis_greedy[0]]
         ttl_selected_hyp_3_to_rank.append([cur_bkg_id, bkg_q[cur_bkg_id], cur_selected_hyp_3_to_rank])

@@ -1,14 +1,15 @@
 import os, sys, re, json, subprocess
 import numpy as np
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from openai import OpenAI, AzureOpenAI
+from google import genai
+from google.genai import types
+from .run_MC_MC2 import run_MC, run_MC2
 from external.MC.Preprocessing.construct_custom_inspiration_corpus import load_title_abstract
 from external.MC2.Method.utils import load_chem_annotation, llm_generation_while_loop, exchange_order_in_list
 from external.MC2.Evaluation.analysis import load_final_hypothesis_from_HGTree, load_final_hypothesis_from_json
 from external.MC2.Evaluation.evaluate import Evaluator
 from external.MC2.Evaluation.analysis import evaluate_hyp
-from MC import run_mc_pipeline
-from MC2 import run_mc2_pipeline
+
 
 # FUNCTION:
 #   Write the research question and background survey to custom_research_background_path; 
@@ -68,69 +69,54 @@ def load_MC2_start_file_research_background_and_coarse_hyp(job_name, bkg_id=0, i
 
 
 
-# which_stage: [0/1, 0/1, 0/1] representing whether perform [inspiration retrieval, hypothesis composition, hypothesis ranking] respectively
-# if_eval_with_gdth_hyp: 0/1, whether to evaluate the hypotheses with groundtruth hypothesis annotation (by default, only the research question in the TOMATO-Chem benchmark has the groundtruth hypothesis annotation); only used when which_stage[2] is 1
-# run the ./MC.sh file
-def run_MC(api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval, custom_research_background_path, custom_inspiration_corpus_path, which_stage, bkg_id, output_dir_postfix, if_eval_with_gdth_hyp, init_id):
-    assert len(which_stage) == 3, "which_stage must be a list of 3 elements."
-    assert all(x in [0, 1] for x in which_stage), "which_stage must contain only 0 or 1."
+# # which_stage: [0/1, 0/1, 0/1] representing whether perform [inspiration retrieval, hypothesis composition, hypothesis ranking] respectively
+# # if_eval_with_gdth_hyp: 0/1, whether to evaluate the hypotheses with groundtruth hypothesis annotation (by default, only the research question in the TOMATO-Chem benchmark has the groundtruth hypothesis annotation); only used when which_stage[2] is 1
+# # run the ./MC.sh file
+# def run_MC(api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval, custom_research_background_path, custom_inspiration_corpus_path, which_stage, bkg_id, output_dir_postfix, if_eval_with_gdth_hyp, init_id, if_mutate_inside_same_bkg_insp, if_mutate_between_diff_insp, baseline_type):
+#     assert len(which_stage) == 3, "which_stage must be a list of 3 elements."
+#     assert all(x in [0, 1] for x in which_stage), "which_stage must contain only 0 or 1."
 
-    # Prepare the command to run the MC script
-    command = ["./MC.sh", api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval, custom_research_background_path, custom_inspiration_corpus_path, which_stage[0], which_stage[1], which_stage[2], bkg_id, output_dir_postfix, if_eval_with_gdth_hyp, init_id]
-    command = [str(x) for x in command]  # Convert all elements to string
-    print("Running command:", ' '.join(command))
-    # Run the command
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1
-    )
+#     # Prepare the command to run the MC script
+#     command = ["./MC.sh", api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval, custom_research_background_path, custom_inspiration_corpus_path, which_stage[0], which_stage[1], which_stage[2], bkg_id, output_dir_postfix, if_eval_with_gdth_hyp, init_id, if_mutate_inside_same_bkg_insp, if_mutate_between_diff_insp, baseline_type]
+#     command = [str(x) for x in command]  # Convert all elements to string
+#     print("Running command:", ' '.join(command))
+#     # Run the command
+#     process = subprocess.Popen(
+#         command,
+#         stdout=subprocess.PIPE,
+#         stderr=subprocess.STDOUT,
+#         text=True,
+#         bufsize=1
+#     )
 
-    for line in process.stdout:
-        print(line, end='')  # print each line as it arrives
+#     for line in process.stdout:
+#         print(line, end='')  # print each line as it arrives
 
-    process.wait()  # Wait for the process to finish
-
-
-def run_MC_py(api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval,
-              custom_research_background_path, custom_inspiration_corpus_path, which_stage, bkg_id, init_id,output_dir_postfix,
-              if_eval_with_gdth_hyp):
-    assert len(which_stage) == 3, "which_stage must be a list of 3 elements."
-    assert all(x in [0, 1] for x in which_stage), "which_stage must contain only 0 or 1."
-    run_mc_pipeline(api_type, api_key, base_url, model_name_insp_retrieval, model_name_gene, model_name_eval,
-                    custom_research_background_path, custom_inspiration_corpus_path, which_stage[0], which_stage[1],
-                    which_stage[2], bkg_id, init_id,output_dir_postfix, if_eval_with_gdth_hyp)
+#     process.wait()  # Wait for the process to finish
 
 
 
-# run the ./MC2.sh file
-def run_MC2(api_type, api_key, base_url, model_name_gene, model_name_eval, custom_research_background_and_coarse_hyp_path, bkg_id, output_dir_postfix, init_hyp_id):
-    # Prepare the command to run the MC2 script
-    command = ["./MC2.sh", api_type, api_key, base_url, model_name_gene, model_name_eval, custom_research_background_and_coarse_hyp_path, bkg_id, output_dir_postfix, init_hyp_id]
-    command = [str(x) for x in command]  # Convert all elements to string
-    print("Running command:", ' '.join(command))
+# # run the ./MC2.sh file
+# def run_MC2(api_type, api_key, base_url, model_name_gene, model_name_eval, custom_research_background_and_coarse_hyp_path, bkg_id, output_dir_postfix, init_hyp_id):
+#     # Prepare the command to run the MC2 script
+#     command = ["./MC2.sh", api_type, api_key, base_url, model_name_gene, model_name_eval, custom_research_background_and_coarse_hyp_path, bkg_id, output_dir_postfix, init_hyp_id]
+#     command = [str(x) for x in command]  # Convert all elements to string
+#     print("Running command:", ' '.join(command))
     
-    # Run the command
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1
-    )
+#     # Run the command
+#     process = subprocess.Popen(
+#         command,
+#         stdout=subprocess.PIPE,
+#         stderr=subprocess.STDOUT,
+#         text=True,
+#         bufsize=1
+#     )
 
-    for line in process.stdout:
-        print(line, end='')  # print each line as it arrives
+#     for line in process.stdout:
+#         print(line, end='')  # print each line as it arrives
 
-    process.wait()  # Wait for the process to finish
-
-
-def run_MC2_py(api_type, api_key, base_url, model_name_gene, model_name_eval,
-               custom_research_background_and_coarse_hyp_path, bkg_id, output_dir_postfix, init_hyp_id):
-    run_mc2_pipeline(api_type, api_key, base_url, model_name_gene, model_name_eval, custom_research_background_and_coarse_hyp_path,0,
-                     bkg_id, output_dir_postfix, init_hyp_id)
+#     process.wait()  # Wait for the process to finish
+    
 
 
 # INPUT:
@@ -331,6 +317,71 @@ def provide_feedback(question, gdth_hyp, gene_hyp, api_type, api_key, base_url, 
 
     return structured_gene[0][0]
 
+
+
+# test whether the api is good
+def initialize_client(api_type, api_key, base_url):
+    ## initialize client
+    # openai client
+    if api_type == 0:
+        client = OpenAI(api_key=api_key, base_url=base_url)
+    # azure client
+    elif api_type == 1:
+        client = AzureOpenAI(
+            azure_endpoint = base_url, 
+            api_key=api_key,  
+            api_version="2024-06-01"
+        )
+    # google client
+    elif api_type == 2:
+        client = genai.Client(api_key=api_key)
+    else:
+        raise NotImplementedError(f"api_type {api_type} is not supported")
+    return client
+
+
+# test whether the api is good
+def test_api(api_type, api_key, base_url, model_name, prompt):
+    assert api_type in [0, 1, 2], "api_type must be 0, 1, or 2"
+    client = initialize_client(api_type, api_key, base_url)
+    
+    ## test api
+    if api_type in [0, 1]:
+        completion = client.chat.completions.create(
+        model=model_name,
+        temperature=0,
+        max_tokens=1000,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt}
+            ]
+        )
+        generation = completion.choices[0].message.content.strip()
+    # google client
+    elif api_type == 2:
+        response = client.models.generate_content(
+            model=model_name, 
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0)
+            )
+        )
+        generation = response.text.strip()
+    return generation
+
+
+# test whether the api is good
+def test_whether_api_is_good(api_type, api_key, base_url, model_name):
+    if_good_api = False
+    try:
+        prompt = "What is the capital of France?"
+        generation = test_api(api_type, api_key, base_url, model_name, prompt)
+        print(generation)
+        if_good_api = True
+        print("The api is good.")
+    except Exception as e:
+        raise Exception(f"The api is not good: {e}")
+    return if_good_api
 
 
 

@@ -1,5 +1,5 @@
 import os, sys, shutil, argparse, json
-import demo_utils as utils
+from Utils import demo_utils as utils
 from external.MC2.Method.utils import load_chem_annotation
 
 
@@ -22,6 +22,9 @@ class MooseDemo:
         # job identifier
         self.job_name = job_name
         self.bkg_id = bkg_id
+        # test whether the api is good
+        utils.test_whether_api_is_good(self.api_type, self.api_key, self.base_url, self.model_name)
+        utils.test_whether_api_is_good(self.api_type_eval, self.api_key_eval, self.base_url_eval, self.model_name_eval)
         # create directories if not exist
         if not os.path.exists("Checkpoints"):
             os.makedirs("Checkpoints")
@@ -104,18 +107,15 @@ class MooseDemo:
     #   (deprecated) bkg_id: background ID in TOMATO-Chem benchmark; if use custom background, set it to 0
     #   which_stage: [0/1, 0/1, 0/1] representing whether perform [inspiration retrieval, hypothesis composition, hypothesis ranking] respectively
     #   if_eval_with_gdth_hyp: 0/1, whether to evaluate the hypotheses with groundtruth hypothesis annotation (by default, only the research question in the TOMATO-Chem benchmark has the groundtruth hypothesis annotation); only used when which_stage[2] is 1
-    def run_MC(self, which_stage=None, init_id=0, if_eval_with_gdth_hyp=0):
+    def run_MC(self, which_stage=None, init_id=0, if_eval_with_gdth_hyp=0, if_mutate_inside_same_bkg_insp=1, if_mutate_between_diff_insp=1, baseline_type=0):
         if which_stage is None:
             which_stage = [1, 1, 1]
         custom_MC_research_background_path = utils.full_custom_MC_start_file_research_background_path(self.job_name, self.bkg_id, init_id)
         custom_MC_inspiration_corpus_path = utils.full_custom_MC_start_file_inspiration_corpus_path(self.job_name, self.bkg_id, init_id)
         assert os.path.exists(custom_MC_research_background_path), "Custom research background file does not exist."
         assert os.path.exists(custom_MC_inspiration_corpus_path), "Custom inspiration corpus file does not exist."
-        utils.run_MC_py(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name,
-                        custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage,
-                        bkg_id=self.bkg_id, init_id=init_id, output_dir_postfix=self.job_name,
-                        if_eval_with_gdth_hyp=if_eval_with_gdth_hyp)
-        # utils.run_MC(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name, custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage, bkg_id=self.bkg_id, output_dir_postfix=self.job_name, if_eval_with_gdth_hyp=if_eval_with_gdth_hyp, init_id=init_id)
+
+        utils.run_MC(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, self.model_name, custom_MC_research_background_path, custom_MC_inspiration_corpus_path, which_stage, bkg_id=self.bkg_id, output_dir_postfix=self.job_name, if_eval_with_gdth_hyp=if_eval_with_gdth_hyp, init_id=init_id, if_mutate_inside_same_bkg_insp=if_mutate_inside_same_bkg_insp, if_mutate_between_diff_insp=if_mutate_between_diff_insp, baseline_type=baseline_type)
 
 
     # INPUT:
@@ -124,10 +124,8 @@ class MooseDemo:
         # obtain start file path
         cur_custom_MC2_start_file_path = utils.full_custom_MC2_start_file_path(self.job_name, self.bkg_id, init_hyp_id)
         assert os.path.exists(cur_custom_MC2_start_file_path), "Custom MC2 research background and coarse hypothesis file does not exist."
-        utils.run_MC2_py(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name,
-                         cur_custom_MC2_start_file_path, bkg_id=self.bkg_id, output_dir_postfix=self.job_name,
-                         init_hyp_id=init_hyp_id)
-        # utils.run_MC2(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, cur_custom_MC2_start_file_path, bkg_id=self.bkg_id, output_dir_postfix=self.job_name, init_hyp_id=init_hyp_id)
+        
+        utils.run_MC2(self.api_type, self.api_key, self.base_url, self.model_name, self.model_name, cur_custom_MC2_start_file_path, bkg_id=self.bkg_id, output_dir_postfix=self.job_name, init_hyp_id=init_hyp_id)
 
 
     # ==================== Simulated Human Feedback (for HAII) ==================== #

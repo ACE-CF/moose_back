@@ -34,7 +34,10 @@ def summarize_result(job_name, model_name, model_name_eval):
 
 
 
-def summarize_result_with_reasoning_steps(job_name, model_name, model_name_eval, start_id, end_id):
+# exp_type: MC, MC2
+# which_num: 0: precision, 1: recall, 2: f1, 3: weighted_precision, 4: weighted_recall, 5: weighted_f1
+def summarize_result_with_reasoning_steps(job_name, model_name, model_name_eval, start_id, end_id, exp_type, which_num):
+    assert exp_type in ["MC", "MC2"], "exp_type must be MC or MC2"
     # parameters for the finegrained hypothesis checkpoint file
     num_hierarchy = 5
     locam_minimum_threshold = 2
@@ -59,23 +62,28 @@ def summarize_result_with_reasoning_steps(job_name, model_name, model_name_eval,
         final_hypothesis, final_scores = load_result_single_bkg(cur_result_file_path)
         print(f"Loading result from {cur_result_file_path}...")
         for cur_id in range(len(final_scores)):
-            collected_recall_scores.append(final_scores[cur_id][4])
+            collected_recall_scores.append(final_scores[cur_id][which_num])
         # load the finegrained hypothesis checkpoint file to obtain cur_ttl_search_step
-        try:
-            cur_finegrained_hyp_checkpoint_file_path = f"./Checkpoints/{job_name}/hierarchical_greedy_{num_hierarchy}_{locam_minimum_threshold}_{if_feedback}_{num_recom_trial_for_better_hyp}_{model_name}_{model_name}_beam_compare_mode_{beam_compare_mode}_beam_size_branching_{beam_size_branching}_num_init_for_EU_{num_init_for_EU}_if_multiple_llm_{if_multiple_llm}_if_use_vague_cg_hyp_as_input_{if_use_vague_cg_hyp_as_input}_bkgid_{cur_bkg_id}_init_hyp_id_{init_hyp_id}_{job_name}.pkl"
-            cur_bkg_hypothesis, cur_ttl_search_step = load_final_hypothesis_from_HGTree_with_reasoning_steps(cur_finegrained_hyp_checkpoint_file_path, hierarchy_id)
-        except Exception as e:
-            cur_finegrained_hyp_checkpoint_file_path = f"./Checkpoints/{job_name}/hierarchical_greedy_{num_hierarchy}_{locam_minimum_threshold}_{if_feedback}_{num_recom_trial_for_better_hyp}_{model_name}_{model_name}_beam_compare_mode_{beam_compare_mode}_beam_size_branching_{beam_size_branching}_num_init_for_EU_{num_init_for_EU}_if_multiple_llm_{if_multiple_llm}_if_use_vague_cg_hyp_as_input_{if_use_vague_cg_hyp_as_input}_bkgid_{cur_bkg_id}_{job_name}.pkl"
-            cur_bkg_hypothesis, cur_ttl_search_step = load_final_hypothesis_from_HGTree_with_reasoning_steps(cur_finegrained_hyp_checkpoint_file_path, hierarchy_id)
-        collected_ttl_search_steps.append(cur_ttl_search_step)
+        if exp_type == "MC2":
+            try:
+                cur_finegrained_hyp_checkpoint_file_path = f"./Checkpoints/{job_name}/hierarchical_greedy_{num_hierarchy}_{locam_minimum_threshold}_{if_feedback}_{num_recom_trial_for_better_hyp}_{model_name}_{model_name}_beam_compare_mode_{beam_compare_mode}_beam_size_branching_{beam_size_branching}_num_init_for_EU_{num_init_for_EU}_if_multiple_llm_{if_multiple_llm}_if_use_vague_cg_hyp_as_input_{if_use_vague_cg_hyp_as_input}_bkgid_{cur_bkg_id}_init_hyp_id_{init_hyp_id}_{job_name}.pkl"
+                cur_bkg_hypothesis, cur_ttl_search_step = load_final_hypothesis_from_HGTree_with_reasoning_steps(cur_finegrained_hyp_checkpoint_file_path, hierarchy_id)
+            except Exception as e:
+                cur_finegrained_hyp_checkpoint_file_path = f"./Checkpoints/{job_name}/hierarchical_greedy_{num_hierarchy}_{locam_minimum_threshold}_{if_feedback}_{num_recom_trial_for_better_hyp}_{model_name}_{model_name}_beam_compare_mode_{beam_compare_mode}_beam_size_branching_{beam_size_branching}_num_init_for_EU_{num_init_for_EU}_if_multiple_llm_{if_multiple_llm}_if_use_vague_cg_hyp_as_input_{if_use_vague_cg_hyp_as_input}_bkgid_{cur_bkg_id}_{job_name}.pkl"
+                cur_bkg_hypothesis, cur_ttl_search_step = load_final_hypothesis_from_HGTree_with_reasoning_steps(cur_finegrained_hyp_checkpoint_file_path, hierarchy_id)
+            collected_ttl_search_steps.append(cur_ttl_search_step)
     # calculate the mean and std of the collected recall scores
     print(f"Collected {len(collected_recall_scores)} recall scores.")
     mean_recall_score = np.mean(collected_recall_scores)
     std_recall_score = np.std(collected_recall_scores)
-    # calculate the mean and std of the collected ttl_search_steps
-    print(f"Collected {len(collected_ttl_search_steps)} ttl_search_steps.")
-    mean_ttl_search_step = np.mean(collected_ttl_search_steps)
-    std_ttl_search_step = np.std(collected_ttl_search_steps)
+    if exp_type == "MC2":
+        # calculate the mean and std of the collected ttl_search_steps
+        print(f"Collected {len(collected_ttl_search_steps)} ttl_search_steps.")
+        mean_ttl_search_step = np.mean(collected_ttl_search_steps)
+        std_ttl_search_step = np.std(collected_ttl_search_steps)
+    else:
+        mean_ttl_search_step = 0
+        std_ttl_search_step = 0
     return mean_recall_score, std_recall_score, mean_ttl_search_step, std_ttl_search_step
 
 
@@ -88,11 +96,16 @@ if __name__ == "__main__":
     # MC2_with_feedback_oracle_rank, MC2_with_feedback_x2_oracle_rank, MC2_with_feedback_x3_oracle_rank, MC2_with_feedback_x4_oracle_rank \
     # MC2_with_feedback_x2_oracle_rank_only_1_feedback
     # MC2_with_feedback_v2_x2_oracle_rank
-    job_name = "MC2_with_feedback_v3_x4_oracle_rank"
+    # baseline_MC_baseline_1, baseline_MC_baseline_2
+    # MC_with_hint_vague_cg_hyp, MC_with_hint_vague_cg_hyp_MOOSE
+    job_name = "baseline_MC_baseline_1"
     model_name = "gpt-4o-mini"
     model_name_eval = None
     start_id = 0
     end_id = 10
-    mean_recall_score, std_recall_score, mean_ttl_search_step, std_ttl_search_step = summarize_result_with_reasoning_steps(job_name, model_name, model_name_eval, start_id, end_id)
+    exp_type = "MC"
+    # which_num: 0: precision, 1: recall, 2: f1, 3: weighted_precision, 4: weighted_recall, 5: weighted_f1
+    which_num = 4
+    mean_recall_score, std_recall_score, mean_ttl_search_step, std_ttl_search_step = summarize_result_with_reasoning_steps(job_name, model_name, model_name_eval, start_id, end_id, exp_type, which_num)
     print(f"The mean recall score of {job_name} is {mean_recall_score} with std {std_recall_score}")
     print(f"The mean ttl_search_step of {job_name} is {mean_ttl_search_step} with std {std_ttl_search_step}")

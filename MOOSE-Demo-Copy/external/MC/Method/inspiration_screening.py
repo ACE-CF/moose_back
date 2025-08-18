@@ -3,9 +3,6 @@ from openai import OpenAI, AzureOpenAI
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from Method.utils import instruction_prompts, load_chem_annotation, organize_raw_inspirations, load_dict_title_2_abstract, recover_generated_title_to_exact_version_of_title, llm_generation_while_loop, exchange_order_in_list
 from Method.logging_utils import setup_logger
-# from .utils import instruction_prompts, load_c
-# hem_annotation, organize_raw_inspirations, load_dict_title_2_abstract, recover_generated_title_to_exact_version_of_title, llm_generation_while_loop, exchange_order_in_list
-# from .logging_utils import setup_logger
 from google import genai
 
 

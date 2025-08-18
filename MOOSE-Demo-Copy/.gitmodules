@@ -1,0 +1,9 @@
+[submodule "external/MC"]
+	path = external/MC
+	url = https://github.com/ZonglinY/MOOSE-Chem.git
+	branch = main
+[submodule "external/MC2"]
+	path = external/MC2
+	url = https://github.com/ZonglinY/MOOSE-Chem-Ch2.git
+	branch = main
+

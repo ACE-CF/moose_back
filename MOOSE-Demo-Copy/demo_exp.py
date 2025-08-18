@@ -1,6 +1,6 @@
 import os, sys, argparse, json
 from MooseDemo import MooseDemo
-import demo_utils as utils
+from Utils import demo_utils as utils
 from external.MC2.Method.utils import load_chem_annotation
 
 
@@ -42,10 +42,49 @@ def baseline_MC(args, job_name, if_eval_with_gdth_hyp, start_id, end_id, if_save
 
 
 
+def baseline_MC2(args, job_name, if_eval_with_gdth_hyp, start_id, end_id, if_save):
+    assert start_id >= 0 and end_id <= len(bkg_q), "start_id and end_id must be within the range of bkg_q."
+    for cur_id in range(start_id, end_id+1):
+        # check if result file already exists
+        result_file_name_eval_with_gdth_hyp = f"./Checkpoints/{job_name}/Result_{job_name}_bkg_id_{cur_id}_model_name_{args.model_name}_eval_model_name_{args.model_name_eval}.json"
+        if os.path.exists(result_file_name_eval_with_gdth_hyp):
+            print(f"Warning: The result file already exists, skipping background question {cur_id}.")
+            continue
+        # initialize MooseDemo with the task name and current background question ID
+        moose_demo = MooseDemo(args.api_type, args.api_key, args.base_url, args.model_name, job_name, cur_id, args.api_type_eval, args.api_key_eval, args.base_url_eval, args.model_name_eval)
+        # load research question and background survey
+        research_question = bkg_q[cur_id]
+        background_survey = dict_bkg2survey[research_question]
+        # no initial hypothesis provided
+        selected_coarse_grained_hyp = "Nothing is provided. Try your best from scratch."
+        # prepare start files
+        moose_demo.write_MC2_start_file(research_question, background_survey, selected_coarse_grained_hyp, init_hyp_id=0)
+        # run MC2
+        moose_demo.run_MC2(init_hyp_id=0)
+        # evaluate with ground truth hypothesis annotation
+        if if_eval_with_gdth_hyp:
+            if not os.path.exists(result_file_name_eval_with_gdth_hyp):
+                final_hypothesis, final_scores = moose_demo.evaluate_MC2_hypothesis_with_groundtruth_hypothesis_annotation(init_hyp_id=0)
+                # save result
+                if if_save:
+                    with open(result_file_name_eval_with_gdth_hyp, "w") as f:
+                        json.dump([final_hypothesis, final_scores], f)
+            else:
+                print("The result file already exists, skipping evaluation with ground truth hypothesis annotation.")
 
-def MC_with_hint(args, job_name, if_eval_with_gdth_hyp, start_id, end_id, if_save):
+
+
+# hint_type: 0: keywords; 1: vague coarse-grained hypothesis used in MC2
+def MC_with_hint(args, job_name, if_eval_with_gdth_hyp, start_id, end_id, if_save, hint_type, if_mutate_inside_same_bkg_insp=1, if_mutate_between_diff_insp=1, baseline_type=0):
     # This function is similar to baseline_MC, but it provides hints to the user based on the background question.
     assert start_id >= 0 and end_id <= len(bkg_q), "start_id and end_id must be within the range of bkg_q."
+    print("hint_type: ", hint_type)
+    if hint_type == 1:
+        print("Using vague coarse-grained hypothesis as hint")
+        # use initial start search point for MC2 as hint
+        vague_cg_hyp_path = "/Users/admin/Research/MOOSE-Chem-Ch2/Data/processed_research_direction.json"
+        with open(vague_cg_hyp_path, "r") as f:
+            dict_bkg2cg_hyp = json.load(f)
     for cur_id in range(start_id, end_id+1):
         # check if result file already exists
         result_file_name_eval_with_gdth_hyp = f"./Checkpoints/{job_name}/Result_{job_name}_bkg_id_{cur_id}_model_name_{args.model_name}_eval_model_name_{args.model_name_eval}.json"
@@ -61,12 +100,18 @@ def MC_with_hint(args, job_name, if_eval_with_gdth_hyp, start_id, end_id, if_sav
         moose_demo.write_MC_start_file_research_background(research_question, background_survey)
         moose_demo.initialize_custom_MC_inspiration_corpus_with_an_existing_file("./external/MC/Data/Inspiration_Corpus_150.json")
         # provide hint (update start files)
-        hint_keywords = dict_bkg2note[research_question]
-        hint_text_to_append = utils.gdth_insp_keyword_to_text(hint_keywords)
+        if hint_type == 0:
+            hint_keywords = dict_bkg2note[research_question]
+            hint_text_to_append = utils.gdth_insp_keyword_to_text(hint_keywords)
+        elif hint_type == 1:
+            hint_text_to_append = dict_bkg2cg_hyp[research_question]
+            hint_text_to_append = "\nBelow is a a preliminary coarse-grained research hypothesis for the research question, please help to make modifications into the coarse-grained hypothesis, to make it an effective and complete fine-grained hypothesis: " + hint_text_to_append
+        else:
+            raise NotImplementedError(hint_type)
         moose_demo.append_new_content_to_background_survey_in_start_file_MC(hint_text_to_append, if_clean_up_survey_from_first_selected_hyp_and_feedback=args.if_clean_up_survey_from_first_selected_hyp_and_feedback)
         # run MC
         which_stage = [1, 1, 1]
-        moose_demo.run_MC(which_stage)
+        moose_demo.run_MC(which_stage, if_mutate_inside_same_bkg_insp=if_mutate_inside_same_bkg_insp, if_mutate_between_diff_insp=if_mutate_between_diff_insp, baseline_type=baseline_type)
         # evaluate with ground truth hypothesis annotation
         if if_eval_with_gdth_hyp:
             if not os.path.exists(result_file_name_eval_with_gdth_hyp):
@@ -279,6 +324,10 @@ if __name__ == "__main__":
     parser.add_argument("--num_init_hyp_from_MC_to_MC2", type=int, default=5)
     parser.add_argument("--if_clean_up_survey_from_first_selected_hyp_and_feedback", type=int, default=0)
     parser.add_argument("--feedback_strength_level", type=int, default=2)
+    parser.add_argument("--hint_type", type=int, default=0)
+    parser.add_argument("--if_mutate_inside_same_bkg_insp", type=int, default=1)
+    parser.add_argument("--if_mutate_between_diff_insp", type=int, default=1)
+    parser.add_argument("--baseline_type", type=int, default=0)
     args = parser.parse_args()
 
     assert args.api_type in [0, 1, 2], "api_type must be 0 (openai) or 1 (azure) or 2 (google)"
@@ -294,10 +343,12 @@ if __name__ == "__main__":
     if not os.path.exists("StartFiles"):
         os.makedirs("StartFiles")
 
-    if "baseline_MC" in args.job_name:
+    if "baseline_MC2" in args.job_name:
+        baseline_MC2(args, job_name=args.job_name, if_eval_with_gdth_hyp=args.if_eval_with_gdth_hyp, start_id=args.start_id, end_id=args.end_id, if_save=args.if_save)
+    elif "baseline_MC" in args.job_name:
         baseline_MC(args, job_name=args.job_name, if_eval_with_gdth_hyp=args.if_eval_with_gdth_hyp, start_id=args.start_id, end_id=args.end_id, if_save=args.if_save)
     elif "MC_with_hint" in args.job_name:
-        MC_with_hint(args, job_name=args.job_name, if_eval_with_gdth_hyp=args.if_eval_with_gdth_hyp, start_id=args.start_id, end_id=args.end_id, if_save=args.if_save)
+        MC_with_hint(args, job_name=args.job_name, if_eval_with_gdth_hyp=args.if_eval_with_gdth_hyp, start_id=args.start_id, end_id=args.end_id, if_save=args.if_save, hint_type=args.hint_type, if_mutate_inside_same_bkg_insp=args.if_mutate_inside_same_bkg_insp, if_mutate_between_diff_insp=args.if_mutate_between_diff_insp, baseline_type=args.baseline_type)
     elif "MC_with_feedback" in args.job_name:
         MC_with_feedback(args, prev_MC_job_name=args.prev_job_name, job_name=args.job_name, if_eval_with_gdth_hyp=args.if_eval_with_gdth_hyp, start_id=args.start_id, end_id=args.end_id, if_save=args.if_save, select_hyp_from_ckpt_method=args.select_hyp_from_ckpt_method)
     elif "MC2_with_MC_input" in args.job_name:

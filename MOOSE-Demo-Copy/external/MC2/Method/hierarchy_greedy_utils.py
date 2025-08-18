@@ -304,7 +304,6 @@ class HGTree:
 
 
 
-
 # Function: concatenate the background_survey with (1) input coarse-grained hypothesis and (2) the corresponding best hypothesis from all the previous hierarchies
 # Input: 
 #   corresponding_best_hyp_from_previous_hierarchies: [best_hyp_from_hierarchy_0, best_hyp_from_hierarchy_1, ...]; best_hyp_from_hierarchy_0/1: str

@@ -4,14 +4,18 @@
 #               MC2_with_MC_input_self_rank, MC2_with_MC_input_oracle_rank, 
 #               MC2_with_feedback_oracle_rank, MC2_with_feedback_x2_oracle_rank, MC2_with_feedback_x3_oracle_rank, MC2_with_feedback_x4_oracle_rank
 #               MC2_with_feedback_x2_oracle_rank_only_1_feedback
-#               MC2_with_feedback_v2_x2_oracle_rank
+#               MC2_with_feedback_v3_oracle_rank, MC2_with_feedback_v3_x2_oracle_rank, MC2_with_feedback_v3_x3_oracle_rank
+#               baseline_MC_baseline_1, baseline_MC_baseline_2, MC_with_hint_vague_cg_hyp_MOOSE
 # MC_hyp_selection_method: best_self_eval, best_recall
 python -u demo_exp.py \
-        --job_name MC2_with_feedback_v2_x2_oracle_rank --prev_job_name MC2_with_feedback_oracle_rank --select_hyp_from_ckpt_method best_recall \
+        --job_name test_baseline_MC2 --prev_job_name  \
+        --select_hyp_from_ckpt_method best_recall \
         --if_eval_with_gdth_hyp 1 --if_save 1 \
-        --start_id 6 --end_id 10 \
-        --clean_up_survey_from_first_selected_hyp_and_feedback 0 \
+        --start_id 0 --end_id 5 \
+        --hint_type 1 \
+        --if_clean_up_survey_from_first_selected_hyp_and_feedback 0 \
         --feedback_strength_level 2 \
+        --if_mutate_inside_same_bkg_insp 0 --if_mutate_between_diff_insp 0 --baseline_type 0 \
         --api_type ${API_TYPE} --api_key "${API_KEY}" --base_url "${BASE_URL}" --model_name "${MODEL_NAME}" \
         # --api_type_eval ${API_TYPE_EVAL} --api_key_eval "${API_KEY_EVAL}" --base_url_eval "${BASE_URL_EVAL}" --model_name_eval "${MODEL_NAME_EVAL}" \
 

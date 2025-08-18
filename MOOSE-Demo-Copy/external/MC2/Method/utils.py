@@ -114,13 +114,13 @@ def load_chem_annotation(chem_annotation_path, if_use_strict_survey_question=1, 
 # Call Openai API,k input is prompt, output is response
 def llm_generation(prompt, model_name, client, temperature=1.0, api_type=0):
     # print("prompt: ", prompt)
-    if_api_completed = False
     if "claude-3-haiku" in model_name:
         max_tokens = 4096
     else:
         max_tokens = 8192
+    cnt_max_trials = 1
     # start inference util we get generation
-    while if_api_completed == False:
+    for cur_trial in range(cnt_max_trials):
         try:
             if api_type in [0, 1]:
                 completion = client.chat.completions.create(
@@ -145,10 +145,12 @@ def llm_generation(prompt, model_name, client, temperature=1.0, api_type=0):
                 generation = response.text.strip()
             else:
                 raise NotImplementedError
-            if_api_completed = True
+            break
         except Exception as e:
-            print("OpenAI reaches its rate limit: ", e)
+            print("API Error occurred: ", e)
             time.sleep(0.25)
+            if cur_trial == cnt_max_trials - 1:
+                raise Exception("Failed to get generation after {} trials because of API error: {}.".format(cnt_max_trials, e))
     # print("generation: ", generation)
     return generation
 
@@ -225,7 +227,7 @@ def get_structured_generation_from_raw_generation_by_llm(gene, template, client,
     # print("prompt: ", prompt)
     
     # while loop to make sure there will be one successful generation
-    max_trials = 20
+    max_trials = 10
     for cur_trial in range(max_trials):
         try:
             generation = llm_generation(prompt, model_name, client, temperature=temperature, api_type=api_type)
@@ -269,7 +271,9 @@ def llm_generation_while_loop(prompt, model_name, client, if_structured_generati
             print(f"Warning: restructure_output_model_name is set to {restructure_output_model_name}, which is different from model_name: {model_name}.")
 
     # while loop to make sure there will be one successful generation
-    while True:
+    cnt_max_trials = 5
+    generation = None
+    for cur_trial in range(cnt_max_trials):
         try:
             generation = llm_generation(prompt, model_name, client, temperature=temperature, api_type=api_type)
             # print("generation: ", generation)
@@ -293,7 +297,8 @@ def llm_generation_while_loop(prompt, model_name, client, if_structured_generati
             # if the format of feedback is wrong, try again in the while loop
             print("generation: ", generation)
             print("AssertionError: {}, try again..".format(repr(e)))
-            
+            if cur_trial == cnt_max_trials - 1:
+                raise Exception("Failed to get generation after {} trials because of Error: {}.".format(cnt_max_trials, e))
 
     # structured_gene
     if if_structured_generation:

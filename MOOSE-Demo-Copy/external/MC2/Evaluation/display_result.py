@@ -9,6 +9,7 @@ PAIRWISE_METRICS = ["effectiveness", "detailedness", "novelty", "feasibility", "
 # file_names: [file_name1, file_name2, ...]
 # which_exp: [H5, H1, Greedy]; 0/1. e.G., [1, 0, 0] means only H5's recall score is calculated
 def show_recall_score_multiple_files(file_names, which_exp, which_num=4):
+
     assert len(which_exp) == 3, "which_exp must be a list of length 3"
     h5_recall_single_file_sum = 0
     h1_recall_single_file_sum = 0
@@ -28,7 +29,7 @@ def show_recall_score_multiple_files(file_names, which_exp, which_num=4):
     h5_recall_multiple_file_average = h5_recall_single_file_sum / ttl_bkg_id_cnted
     h1_recall_multiple_file_average = h1_recall_single_file_sum / ttl_bkg_id_cnted
     greedy_recall_multiple_file_average = greedy_recall_single_file_sum / ttl_bkg_id_cnted
-    print(f"h5_recall_multiple_file_average: {h5_recall_multiple_file_average:.3f}, h1_recall_multiple_file_average: {h1_recall_multiple_file_average:.3f}, greedy_recall_multiple_file_average: {greedy_recall_multiple_file_average:.3f}")
+    print(f"h5_recall_multiple_file_average: {h5_recall_multiple_file_average:.5f}, h1_recall_multiple_file_average: {h1_recall_multiple_file_average:.5f}, greedy_recall_multiple_file_average: {greedy_recall_multiple_file_average:.5f}")
     return h5_recall_multiple_file_average, h1_recall_multiple_file_average, greedy_recall_multiple_file_average
         
 
@@ -126,7 +127,7 @@ def parse_start_end_id_from_recall_file_name(file_name, file_type="recall"):
 
 # id_pairs: [[start_id1, end_id1], [start_id2, end_id2], ...]
 # model_name_1 / eval_model_name_1 / if_multiple_llm_1 / model_name_2 / eval_model_name_2 / if_multiple_llm_2 / pairwise_eval_model_name / pairwise_if_multiple_llm: only used for pairwise_Q3
-def synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=3, root_dir="./Analysis_Results/", file_type="recall", aspect_type="overall", model_name_1="gpt-4o-mini", eval_model_name_1="gpt-4o-mini", if_multiple_llm_1=1, model_name_2="gpt-4o-mini", eval_model_name_2="gpt-4o-mini", if_multiple_llm_2=1, pairwise_eval_model_name="gpt-4o-mini", pairwise_if_multiple_llm=1):
+def synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=3, root_dir="./Analysis_Results/", file_type="recall", aspect_type="overall", model_name_1="gpt-4o-mini", eval_model_name_1="gpt-4o-mini", if_multiple_llm_1=1, model_name_2="gpt-4o-mini", eval_model_name_2="gpt-4o-mini", if_multiple_llm_2=1, pairwise_eval_model_name="gpt-4o-mini", pairwise_if_multiple_llm=1, if_generate_with_past_failed_hyp=0, which_exp=None, output_dir_postfix="updated_prompt_mar_29"):
     # check file_type
     assert file_type in ["recall", "pairwise_Q1", "pairwise_Q3"]
     # check aspect_type
@@ -135,9 +136,11 @@ def synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs,
 
     file_names = []
     for start_id, end_id in start_end_id_pairs:
-        output_dir_postfix="updated_prompt_mar_29"
         if file_type == "recall":
-            cur_file = root_dir + f"/final_analysis_f1_scores_results_{start_id}_{end_id}_gpt-4o-mini_gpt-4o-mini_{output_dir_postfix}_{if_multiple_llm_1}_2_beam_size_branching_2_1_4_gpt-4o-mini_num_compare_times_{num_compare_times}_maxScoreEachComponent.json"
+            # added "which_exp" to the file name
+            cur_file = root_dir + f"/final_analysis_f1_scores_results_{start_id}_{end_id}_gpt-4o-mini_gpt-4o-mini_{output_dir_postfix}_{if_multiple_llm_1}_2_beam_size_branching_2_1_4_gpt-4o-mini_num_compare_times_{num_compare_times}_maxScoreEachComponent_if_generate_with_past_failed_hyp_{if_generate_with_past_failed_hyp}_{which_exp[0]}_{which_exp[1]}_{which_exp[2]}.json"
+            if not os.path.exists(cur_file) and if_generate_with_past_failed_hyp == 0:
+                cur_file = root_dir + f"/final_analysis_f1_scores_results_{start_id}_{end_id}_gpt-4o-mini_gpt-4o-mini_{output_dir_postfix}_{if_multiple_llm_1}_2_beam_size_branching_2_1_4_gpt-4o-mini_num_compare_times_{num_compare_times}_maxScoreEachComponent.json" # removed "if_generate_with_past_failed_hyp"
         elif file_type == "pairwise_Q1":
             cur_file = root_dir + f"/final_analysis_pairwise_compare_results_{start_id}_{end_id}_gpt-4o-mini_gpt-4o-mini_{output_dir_postfix}_if_multiple_llm_{if_multiple_llm_1}_beam_size_branching_2_1_4_gpt-4o-mini_1_num_compare_times_{num_compare_times}_{aspect_type}.json"
             # Q: 
@@ -165,7 +168,9 @@ if __name__ == "__main__":
     # root_dir = "./Analysis_Results_old/"
     root_dir = "./Analysis_Results/"
     # display_type: 1: pairwise score (Q1), 2: recall score (Q2), 3: pairwise score (Q3)
-    display_type = 1
+    display_type = 2
+    # updated_prompt_mar_29
+    output_dir_postfix = "updated_prompt_mar_29"
 
 
     ## Pairwise score
@@ -180,25 +185,28 @@ if __name__ == "__main__":
         # start_end_id_pairs = [[36, 50]]
 
         for cur_metric in PAIRWISE_METRICS:
-            file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, file_type="pairwise_Q1", aspect_type=cur_metric)
+            file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, file_type="pairwise_Q1", aspect_type=cur_metric, output_dir_postfix=output_dir_postfix)
             cur_metric_all_pairwise_score = display_pairwise_score_multiple_files(file_names, file_type="pairwise_Q1")
             print("{}: \n{}".format(cur_metric, cur_metric_all_pairwise_score))
     # Recall score
     elif display_type == 2:
         ## parameters
         # which_num: 0: precision, 1: recall, 2: f1, 3: weighted_precision, 4: weighted_recall, 5: weighted_f1
-        which_num = 4
+        which_num = 1
         num_compare_times = 3
         start_end_id_pairs = [[0, 2], [3, 4], [5, 13], [14, 23], [24, 35], [36, 46], [47, 50]]
+        # start_end_id_pairs = [[0, 50]]
+        # start_end_id_pairs = [[0, 25], [26, 50]]
         ''' Table 2 parameters '''
         if_multiple_llm = 1
+        if_generate_with_past_failed_hyp = 0
         which_exp = [1, 1, 1]  # [H5, H1, Greedy]; 0/1. e.G., [1, 0, 0] means only H5's recall score is calculated
 
         ''' Compare if_multiple_llm==0 and if_multiple_llm==1 parameters '''
         # if_multiple_llm = 0
         # which_exp = [1, 0, 0]  # [H5, H1, Greedy]; 0/1. e.G., [1, 0, 0] means only H5's recall score is calculated
 
-        file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, if_multiple_llm_1=if_multiple_llm)
+        file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, if_multiple_llm_1=if_multiple_llm, if_generate_with_past_failed_hyp=if_generate_with_past_failed_hyp, which_exp=which_exp, output_dir_postfix=output_dir_postfix)
         show_recall_score_multiple_files(file_names, which_exp, which_num=which_num)
     elif display_type == 3:
         ### parameters
@@ -229,7 +237,7 @@ if __name__ == "__main__":
 
         for cur_metric in PAIRWISE_METRICS:
             # file_names
-            file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, file_type="pairwise_Q3", aspect_type=cur_metric, model_name_1=model_name_1, eval_model_name_1=eval_model_name_1, if_multiple_llm_1=if_multiple_llm_1, model_name_2=model_name_2, eval_model_name_2=eval_model_name_2, if_multiple_llm_2=if_multiple_llm_2, pairwise_eval_model_name=pairwise_eval_model_name, pairwise_if_multiple_llm=pairwise_if_multiple_llm)
+            file_names = synthesize_file_names_from_start_end_id_for_recall_files(start_end_id_pairs, num_compare_times=num_compare_times, root_dir=root_dir, file_type="pairwise_Q3", aspect_type=cur_metric, model_name_1=model_name_1, eval_model_name_1=eval_model_name_1, if_multiple_llm_1=if_multiple_llm_1, model_name_2=model_name_2, eval_model_name_2=eval_model_name_2, if_multiple_llm_2=if_multiple_llm_2, pairwise_eval_model_name=pairwise_eval_model_name, pairwise_if_multiple_llm=pairwise_if_multiple_llm, output_dir_postfix=output_dir_postfix)
             # get the pairwise score
             cur_metric_all_pairwise_score = display_pairwise_score_multiple_files(file_names, file_type="pairwise_Q3")
             print("{}: \n{}".format(cur_metric, cur_metric_all_pairwise_score))

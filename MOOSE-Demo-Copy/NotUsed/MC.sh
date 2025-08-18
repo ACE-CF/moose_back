@@ -36,9 +36,9 @@ output_dir_postfix=${13}
 if_with_gdth_hyp_annotation=${14}
 init_id=${15}
 
-if_mutate_inside_same_bkg_insp=1
-if_mutate_between_diff_insp=1
-baseline_type=0
+if_mutate_inside_same_bkg_insp=${16}
+if_mutate_between_diff_insp=${17}
+baseline_type=${18}
 
 
 # ## Custom Research Background Dumping 

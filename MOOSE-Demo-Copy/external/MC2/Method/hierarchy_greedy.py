@@ -36,15 +36,19 @@ class HierarchyGreedy(object):
             self.client = genai.Client(api_key=args.api_key)
         else:
             raise NotImplementedError
+
         # prepare pairwise comparison
         self.pairwise_compare = PairwiseCompare(args.api_type, args.eval_api_key, args.base_url, args.eval_model_name, if_multiple_llm=args.if_multiple_llm)
         # obtain groundtruth finegrained hypothesis and experiment from TOMATO-Chem2
+
         if self.args.if_use_custom_research_background_and_coarse_hyp == 0:
+            print("start 3")
             self.bkg_q_list, self.dict_bkg2survey, self.dict_bkg2cg_hyp, self.dict_bkg2fg_hyp, self.dict_bkg2fg_exp, self.dict_bkg2note = load_chem_annotation(args.chem_annotation_path)
             # update dict_bkg2cg_hyp with the vague cg hypothesis
             if args.if_use_vague_cg_hyp_as_input == 1:
                 assert os.path.exists(args.vague_cg_hyp_path)
                 with open(args.vague_cg_hyp_path, "r") as f:
+                    print("start 5")
                     self.dict_bkg2cg_hyp = json.load(f)
 
 
@@ -119,11 +123,38 @@ class HierarchyGreedy(object):
                         )
                         for cur_beam_id, cur_hyp_collection_in_topk in enumerate(topk_hypothesis)
                     ]
-                    for future in concurrent.futures.as_completed(futures):
+                    ## previous code, might not stop when KeyboardInterrupt
+                    # for future in concurrent.futures.as_completed(futures):
+                    #     try:
+                    #         future.result()
+                    #     except Exception as e:
+                    #         print(f"Error in parallel task: {e}")
+                    while futures:
                         try:
-                            future.result()
-                        except Exception as e:
-                            print(f"Error in parallel task: {e}")
+                            # 使用短超时检查完成的任务
+                            done_futures = []
+                            for future in list(futures):
+                                try:
+                                    future.result(timeout=2.0)
+                                    done_futures.append(future)
+                                except concurrent.futures.TimeoutError:
+                                    continue
+                                except Exception as e:
+                                    print(f"Error in parallel task: {e}")
+                                    done_futures.append(future)
+                            
+                            # 移除已完成的任务
+                            for future in done_futures:
+                                futures.remove(future)
+                                
+                            if not done_futures:
+                                time.sleep(0.5)  # 短暂休息，允许KeyboardInterrupt
+                                
+                        except KeyboardInterrupt:
+                            print("检测到中断信号，取消剩余任务...")
+                            for future in futures:
+                                future.cancel()
+                            raise
             else:
                 for cur_beam_id, cur_hyp_collection_in_topk in enumerate(topk_hypothesis):
                     self.process_each_branch(cur_beam_id, cur_hyp_collection_in_topk, cur_hierarchy_id, hgtree, background_survey, input_cg_hyp, research_question)
@@ -206,14 +237,41 @@ class HierarchyGreedy(object):
                     )
                     for cur_init_id in range(self.args.num_init_for_EU)
                 ]
-                # Collect results as they complete
-                for future in concurrent.futures.as_completed(futures):
+                ## previous code, might not stop when KeyboardInterrupt
+                # # Collect results as they complete
+                # for future in concurrent.futures.as_completed(futures):
+                #     try:
+                #         cur_init_search_results = future.result()
+                #         if len(cur_init_search_results) > 0:
+                #             search_results_all_init.append(cur_init_search_results)
+                #     except Exception as e:
+                #         print(f"Error in processing: {e}")
+                while futures:
                     try:
-                        cur_init_search_results = future.result()
-                        if len(cur_init_search_results) > 0:
-                            search_results_all_init.append(cur_init_search_results)
-                    except Exception as e:
-                        print(f"Error in processing: {e}")
+                        done_futures = []
+                        for future in list(futures):
+                            try:
+                                cur_init_search_results = future.result(timeout=2.0)
+                                if len(cur_init_search_results) > 0:
+                                    search_results_all_init.append(cur_init_search_results)
+                                done_futures.append(future)
+                            except concurrent.futures.TimeoutError:
+                                continue
+                            except Exception as e:
+                                print(f"Error in processing: {e}")
+                                done_futures.append(future)
+                        
+                        for future in done_futures:
+                            futures.remove(future)
+                            
+                        if not done_futures:
+                            time.sleep(0.5)
+                            
+                    except KeyboardInterrupt:
+                        print("检测到中断信号，取消剩余任务...")
+                        for future in futures:
+                            future.cancel()
+                        raise
         else:
             for cur_init_id in range(self.args.num_init_for_EU):
                 print("\t\tInitial point ID: ", cur_init_id)
@@ -337,7 +395,21 @@ class HierarchyGreedy(object):
         if_better=False
         cnt_search_single_step=0
         if_continue_search=True
+        # past_failed_hyp: [[hypothesis, reason], ...]
+        if self.args.if_generate_with_past_failed_hyp == 1:
+            past_failed_hyp = []
+            # back up the original survey to advoid add the same past failed hypothesis to the survey multiple times
+            cur_survey_ori = cur_survey
         while not if_better:
+            # add past failed hypothesis to the survey to mimic in-context RL
+            if self.args.if_generate_with_past_failed_hyp == 1:
+                if len(past_failed_hyp) > 0:
+                    prompt_past_failed_hyp = ""
+                    for i in range(len(past_failed_hyp)):
+                        prompt_past_failed_hyp += "The {}th previous hypothesis that is not better than the base hypothesis is: ".format(i+1) + past_failed_hyp[i][0] + "\n" + "The reason is: " + past_failed_hyp[i][1] + "\n"
+                    prompt_past_failed_hyp += "\nBelow are some previous updated hypotheses that are not better than the base hypothesis and the corresponding reasons (The reason might mention Research hypothesis candidate 1 and Research hypothesis candidate 2. Out of them, Research hypothesis candidate 1 is the base hypothesis, and Research hypothesis candidate 2 is the not better updated hypothesis), you may be aware of them: " + prompt_past_failed_hyp
+                    cur_survey = cur_survey_ori + prompt_past_failed_hyp
+                    print("Added past failed hypothesis to the survey to mimic in-context RL")
             # structured_gene: [hypothesis, reason]
             if self.args.if_feedback == 1:
                 structured_gene = self.one_step_greedy_search_with_feedback(cur_q, cur_survey, cur_cg_hyp, cur_hierarchy_id, cur_init_id, prev_hierarchy_gene_fg_hyp, this_hierarchy_prev_step_gene_fg_hyp, prompt_type)
@@ -356,6 +428,9 @@ class HierarchyGreedy(object):
             else:
                 print("\t\t\t\tThe new hypothesis is not better than the previous one, try again... \n")
                 # print("The new hypothesis is not better than the previous one, try again... \nReason: {}".format(selection_reason[1]))
+                if self.args.if_generate_with_past_failed_hyp == 1:
+                    past_failed_hyp.append([structured_gene[0], selection_reason[1]])
+                    print("Collected past failed hypothesis to mimic in-context RL")
             cnt_search_single_step+=1
             if if_better == False and cnt_search_single_step >= locam_minimum_threshold:
                 if_continue_search=False
@@ -521,6 +596,7 @@ if __name__ == "__main__":
     parser.add_argument("--if_use_vague_cg_hyp_as_input", type=int, default=0, help="whether to use processed vague coarse-grained hypothesis as input (by Data_Processing/input_hyp_processing.py)")
     parser.add_argument("--vague_cg_hyp_path", type=str, default="./Data/processed_research_direction.json", help="store processed vague coarse-grained hypothesis")
     parser.add_argument("--if_generate_with_example", type=int, default=1, help="during optimization, whether to use hypothesis example in the prompt to generate hypothesis in each step")
+    parser.add_argument("--if_generate_with_past_failed_hyp", type=int, default=0, help="during optimization, whether to use past failed hypothesis in the prompt to generate hypothesis in each step")
     parser.add_argument("--if_use_custom_research_background_and_coarse_hyp", type=int, default=0, help="whether to use custom research question & background survey & coarse-grained hypothesis; 0: use the background research question in the chem_annotation_path; 1: use custom research question in custom_research_background_and_coarse_hyp_path")
     parser.add_argument("--custom_research_background_and_coarse_hyp_path", type=str, default="./custom_research_background_and_coarse_hyp.json", help="if bkg_id == -1, then use this path to load custom research question and background survey and coarse-grained hypothesis; in a format of json file, with keys: 'research_question', 'background_survey', 'coarse_grained_hypothesis'; if bkg_id != -1, then this path will be ignored")
     args = parser.parse_args()
@@ -535,17 +611,18 @@ if __name__ == "__main__":
     assert args.if_use_vague_cg_hyp_as_input in [0, 1]
     # we need if_generate_with_example to be 1
     assert args.if_generate_with_example in [1]
+    assert args.if_generate_with_past_failed_hyp in [0, 1]
     assert args.if_use_custom_research_background_and_coarse_hyp in [0, 1]
 
-    ## Setup logger
-    logger = setup_logger(args.output_dir)
-    # Redirect print to logger
-    def custom_print(*args, **kwargs):
-        message = " ".join(map(str, args))
-        logger.info(message)
-    # global print
-    # print = custom_print
-    builtins.print = custom_print
+    # ## Setup logger
+    # logger = setup_logger(args.output_dir)
+    # # Redirect print to logger
+    # def custom_print(*args, **kwargs):
+    #     message = " ".join(map(str, args))
+    #     logger.info(message)
+    # # global print
+    # # print = custom_print
+    # builtins.print = custom_print
     print(args)
 
     ## if use custom research question & background survey & coarse-grained hypothesis   
