@@ -19,7 +19,8 @@ env/
 env310/
 moose_env/
 MOOSE-Demo/
-
+my_moose/Checkpoints/
+my_moose/StartFiles/
 # Environment variables / secrets
 .env
 *.env
