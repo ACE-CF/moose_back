@@ -44,7 +44,7 @@ def download_moose2_tree(request):
     file_path = os.path.join(settings.BASE_DIR, "downloadfile", "tree2.pkl")
     if not os.path.exists(file_path):
         raise Http404("File not found")
-    return FileResponse(open(file_path, "rb"), as_attachment=True, filename="moose2_tree.json")
+    return FileResponse(open(file_path, "rb"), as_attachment=True, filename="moose2_tree.pkl")
 
 @csrf_exempt
 def load_file_tree(request):
